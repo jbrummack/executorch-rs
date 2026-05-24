@@ -1,19 +1,43 @@
 use std::path::{Path, PathBuf};
 
 // const EXECUTORCH_VERSION: &str = "1.1.0";
+fn link_swift() {
+    println!("cargo:rustc-env=MACOSX_DEPLOYMENT_TARGET=12.0");
+    println!("cargo:rustc-link-lib=swiftCompatibility56");
+    println!("cargo:rustc-link-lib=swiftCompatibilityPacks");
+    println!("cargo:rustc-link-lib=swiftCompatibilityDynamicReplacements");
 
+    // Point the linker at the Swift stdlib location
+    let xcode_path = std::process::Command::new("xcode-select")
+        .arg("--print-path")
+        .output()
+        .unwrap();
+    let xcode_path = String::from_utf8(xcode_path.stdout)
+        .unwrap()
+        .trim()
+        .to_string();
+
+    println!(
+        "cargo:rustc-link-search={}/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx",
+        xcode_path
+    );
+    //println!("cargo:rustc-link-lib=swift");
+    //println!("cargo:rustc-link-lib=swiftCore");
+}
 fn main() {
     // TODO: verify on runtime we use the correct version of executorch
     // println!(
     //     "cargo:rustc-env=EXECUTORCH_RS_EXECUTORCH_VERSION={}",
     //     EXECUTORCH_VERSION
     // );
-
+    let dl_path = download_prebuilt::blocking_download_version(1, 1, 0).unwrap();
+    let macpath = PathBuf::from(dl_path).join("macos-arm64");
+    link_swift();
     build_c_bridge();
     #[cfg(feature = "std")]
     build_cxx_bridge();
     generate_bindings();
-    link_executorch();
+    link_executorch(macpath.to_string_lossy().to_string());
 
     println!("cargo::rerun-if-changed={}", cpp_dir().to_str().unwrap());
     println!(
@@ -119,7 +143,7 @@ fn generate_bindings() {
         .expect("Couldn't write bindings!");
 }
 
-fn link_executorch() {
+fn link_executorch(libdir: String) {
     println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_EXECUTORCH_LIB_DIR");
     println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_LINK");
 
@@ -139,7 +163,7 @@ fn link_executorch() {
         return;
     }
 
-    let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR").ok();
+    let libs_dir = Some(libdir); //std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR").ok();
     if libs_dir.is_none() {
         println!("cargo::warning=EXECUTORCH_RS_EXECUTORCH_LIB_DIR is not set, can't locate executorch static libs");
     }
@@ -148,7 +172,7 @@ fn link_executorch() {
         println!("cargo::rustc-link-search=native={libs_dir}");
     }
     println!("cargo::rustc-link-lib=static:+whole-archive=executorch");
-    println!("cargo::rustc-link-lib=static:+whole-archive=executorch_core");
+    //println!("cargo::rustc-link-lib=static:+whole-archive=executorch_core");
 
     if cfg!(feature = "data-loader") {
         if let Some(libs_dir) = &libs_dir {
