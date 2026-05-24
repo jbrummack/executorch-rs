@@ -172,6 +172,9 @@ fn link_executorch(libdir: String) {
         println!("cargo::rustc-link-search=native={libs_dir}");
     }
     println!("cargo::rustc-link-lib=static:+whole-archive=executorch");
+    //XNNPACK FEATURE
+    println!("cargo::rustc-link-lib=static:+whole-archive=backend_xnnpack");
+    println!("cargo::rustc-link-lib=static:+whole-archive=threadpool");
     //println!("cargo::rustc-link-lib=static:+whole-archive=executorch_core");
 
     if cfg!(feature = "data-loader") {
