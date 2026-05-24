@@ -175,6 +175,13 @@ fn link_executorch(libdir: String) {
     //XNNPACK FEATURE
     println!("cargo::rustc-link-lib=static:+whole-archive=backend_xnnpack");
     println!("cargo::rustc-link-lib=static:+whole-archive=threadpool");
+    //Quantised kernels
+    println!("cargo::rustc-link-lib=static:+whole-archive=kernels_quantized");
+    //Optimised kernels
+    println!("cargo:rustc-link-lib=framework=Accelerate");
+    println!("cargo::rustc-link-lib=static:+whole-archive=kernels_optimized");
+    //Torch AO
+    println!("cargo::rustc-link-lib=static:+whole-archive=kernels_torchao");
     //println!("cargo::rustc-link-lib=static:+whole-archive=executorch_core");
 
     if cfg!(feature = "data-loader") {
