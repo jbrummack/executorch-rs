@@ -182,6 +182,12 @@ fn use_torch_ao() {
     println!("cargo::rustc-link-lib=static:+whole-archive=kernels_torchao");
 }
 fn use_coreml() {
+    println!("cargo:rustc-link-lib=framework=Accelerate");
+    println!("cargo:rustc-link-arg=-ObjC");
+    // CoreML framework
+    println!("cargo:rustc-link-lib=framework=CoreML");
+    // SQLite symbols needed for CoreML
+    println!("cargo:rustc-link-lib=sqlite3");
     println!("cargo::rustc-link-lib=static:+whole-archive=backend_coreml");
 }
 fn use_llm() {
