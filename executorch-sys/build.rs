@@ -162,7 +162,34 @@ fn generate_bindings() {
         .write_to_file(out_path.join("executorch_bindings.rs"))
         .expect("Couldn't write bindings!");
 }
-
+///Use XNNPACK Kernels
+fn use_xnnpack() {
+    println!("cargo::rustc-link-lib=static:+whole-archive=backend_xnnpack");
+    println!("cargo::rustc-link-lib=static:+whole-archive=threadpool");
+}
+///Use optimised kernels
+fn optimised_kernels() {
+    //Needed for OpenMP
+    println!("cargo:rustc-link-lib=framework=Accelerate");
+    println!("cargo::rustc-link-lib=static:+whole-archive=kernels_optimized");
+}
+///Use quantised kernels
+fn quantised_kernels() {
+    println!("cargo::rustc-link-lib=static:+whole-archive=kernels_quantized");
+}
+///Use Torch AO
+fn use_torch_ao() {
+    println!("cargo::rustc-link-lib=static:+whole-archive=kernels_torchao");
+}
+fn use_coreml() {
+    println!("cargo::rustc-link-lib=static:+whole-archive=coreml");
+}
+fn use_llm() {
+    println!("cargo::rustc-link-lib=static:+whole-archive=executorch_llm");
+}
+fn use_llm_kernels() {
+    println!("cargo::rustc-link-lib=static:+whole-archive=kernels_llm");
+}
 fn link_executorch(libdir: Option<String>) {
     println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_EXECUTORCH_LIB_DIR");
     println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_LINK");
@@ -192,18 +219,48 @@ fn link_executorch(libdir: Option<String>) {
         println!("cargo::rustc-link-search=native={libs_dir}");
     }
     println!("cargo::rustc-link-lib=static:+whole-archive=executorch");
-    //XNNPACK FEATURE
-    println!("cargo::rustc-link-lib=static:+whole-archive=backend_xnnpack");
-    println!("cargo::rustc-link-lib=static:+whole-archive=threadpool");
-    //Quantised kernels
-    println!("cargo::rustc-link-lib=static:+whole-archive=kernels_quantized");
-    //Optimised kernels
-    println!("cargo:rustc-link-lib=framework=Accelerate");
-    println!("cargo::rustc-link-lib=static:+whole-archive=kernels_optimized");
-    //Torch AO
-    println!("cargo::rustc-link-lib=static:+whole-archive=kernels_torchao");
-    //println!("cargo::rustc-link-lib=static:+whole-archive=executorch_core");
+    if cfg!(feature = "xnnpack") {
+        use_xnnpack();
+    }
+    if cfg!(feature = "optimised_kernels") {
+        optimised_kernels();
+    }
 
+    if cfg!(feature = "torch_ao") {
+        use_torch_ao();
+    }
+
+    if cfg!(feature = "quantised_kernels") {
+        quantised_kernels();
+    }
+
+    if cfg!(feature = "llm") {
+        use_llm();
+    }
+
+    if cfg!(feature = "llm_kernels") {
+        use_llm_kernels();
+    }
+    if cfg!(feature = "coreml") {
+        use_coreml();
+    }
+
+    //Link executorch core only if it exists
+    if let Some(libs_dir) = &libs_dir {
+        let path = PathBuf::from(libs_dir).join("libexecutorch_core.a");
+        if let Ok(true) = std::fs::exists(path) {
+            println!("cargo::rustc-link-lib=static:+whole-archive=executorch_core");
+        }
+    } else {
+        println!("cargo::rustc-link-lib=static:+whole-archive=executorch_core");
+    }
+    if cfg!(feature = "download_prebuilt") {
+        return;
+    }
+
+    //if cfg!(feature = "download_prebuilt") {
+    //    return;
+    //}
     if cfg!(feature = "data-loader") {
         if let Some(libs_dir) = &libs_dir {
             println!("cargo::rustc-link-search=native={libs_dir}/extension/data_loader/");
