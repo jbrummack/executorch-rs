@@ -182,7 +182,7 @@ fn use_torch_ao() {
     println!("cargo::rustc-link-lib=static:+whole-archive=kernels_torchao");
 }
 fn use_coreml() {
-    println!("cargo::rustc-link-lib=static:+whole-archive=coreml");
+    println!("cargo::rustc-link-lib=static:+whole-archive=backend_coreml");
 }
 fn use_llm() {
     println!("cargo::rustc-link-lib=static:+whole-archive=executorch_llm");
