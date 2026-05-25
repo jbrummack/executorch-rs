@@ -258,9 +258,6 @@ fn link_executorch(libdir: Option<String>) {
         return;
     }
 
-    //if cfg!(feature = "download_prebuilt") {
-    //    return;
-    //}
     if cfg!(feature = "data-loader") {
         if let Some(libs_dir) = &libs_dir {
             println!("cargo::rustc-link-search=native={libs_dir}/extension/data_loader/");
