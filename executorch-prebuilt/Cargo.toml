@@ -1,0 +1,21 @@
+[package]
+name = "executorch-prebuilt"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+download_prebuilt = {path = "../download_prebuilt", optional = true}
+
+[build-dependencies]
+
+[features]
+default = ["download_prebuilt","enable_all_features"]
+download_prebuilt = ["dep:download_prebuilt"]
+enable_all_features = ["xnnpack","optimised_kernels","quantised_kernels","torch_ao","coreml","llm"]
+xnnpack = []
+optimised_kernels = []
+quantised_kernels = []
+torch_ao = []
+coreml = []
+llm_kernels = []
+llm = ["llm_kernels"]

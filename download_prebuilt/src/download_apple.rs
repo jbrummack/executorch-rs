@@ -220,7 +220,7 @@ async fn download_binary_payloads(
     Ok(())
 }
 
-async fn download_and_verify(
+pub async fn download_and_verify(
     client: &reqwest::Client,
     url: &str,
     dest: &Path,

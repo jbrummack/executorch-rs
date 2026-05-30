@@ -1,48 +1,7 @@
 use std::path::{Path, PathBuf};
 
 // const EXECUTORCH_VERSION: &str = "1.1.0";
-fn link_swift() {
-    println!("cargo:rustc-env=MACOSX_DEPLOYMENT_TARGET=12.0");
-    println!("cargo:rustc-link-lib=swiftCompatibility56");
-    println!("cargo:rustc-link-lib=swiftCompatibilityPacks");
-    println!("cargo:rustc-link-lib=swiftCompatibilityDynamicReplacements");
 
-    // Point the linker at the Swift stdlib location
-    let xcode_path = std::process::Command::new("xcode-select")
-        .arg("--print-path")
-        .output()
-        .unwrap();
-    let xcode_path = String::from_utf8(xcode_path.stdout)
-        .unwrap()
-        .trim()
-        .to_string();
-
-    println!(
-        "cargo:rustc-link-search={}/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx",
-        xcode_path
-    );
-}
-
-fn prebuilt_path() -> Option<String> {
-    //#[cfg(all(target_arch = "aarch64", target_os = "ios"))]
-    let path = download_prebuilt::blocking_download_version(1, 1, 0).unwrap();
-    link_swift();
-    let path = PathBuf::from(path);
-    if cfg!(all(
-        target_vendor = "apple",
-        target_os = "ios",
-        target_env = "sim"
-    )) {
-        Some(path.join("ios-arm64-simulator"))
-    } else if cfg!(all(target_vendor = "apple", target_os = "ios")) {
-        Some(path.join("ios-arm64"))
-    } else if cfg!(all(target_vendor = "apple", target_os = "macos")) {
-        Some(path.join("macos-arm64"))
-    } else {
-        None
-    }
-    .map(|value| value.as_os_str().to_string_lossy().to_string())
-}
 fn main() {
     // TODO: verify on runtime we use the correct version of executorch
     // println!(
@@ -50,14 +9,11 @@ fn main() {
     //     EXECUTORCH_VERSION
     // );
 
-    //let macpath = PathBuf::from(dl_path).join("macos-arm64");
-    let macpath = prebuilt_path();
-    //link_swift();
     build_c_bridge();
     #[cfg(feature = "std")]
     build_cxx_bridge();
     generate_bindings();
-    link_executorch(macpath);
+    link_executorch();
 
     println!("cargo::rerun-if-changed={}", cpp_dir().to_str().unwrap());
     println!(
@@ -162,42 +118,8 @@ fn generate_bindings() {
         .write_to_file(out_path.join("executorch_bindings.rs"))
         .expect("Couldn't write bindings!");
 }
-///Use XNNPACK Kernels
-fn use_xnnpack() {
-    println!("cargo::rustc-link-lib=static:+whole-archive=backend_xnnpack");
-    println!("cargo::rustc-link-lib=static:+whole-archive=threadpool");
-}
-///Use optimised kernels
-fn optimised_kernels() {
-    //Needed for OpenMP
-    println!("cargo:rustc-link-lib=framework=Accelerate");
-    println!("cargo::rustc-link-lib=static:+whole-archive=kernels_optimized");
-}
-///Use quantised kernels
-fn quantised_kernels() {
-    println!("cargo::rustc-link-lib=static:+whole-archive=kernels_quantized");
-}
-///Use Torch AO
-fn use_torch_ao() {
-    println!("cargo::rustc-link-lib=static:+whole-archive=kernels_torchao");
-}
-fn use_coreml() {
-    println!("cargo:rustc-link-lib=framework=Accelerate");
-    println!("cargo:rustc-link-arg=-ObjC");
-    // CoreML framework
-    println!("cargo:rustc-link-lib=framework=CoreML");
-    // SQLite symbols needed for CoreML
-    println!("cargo:rustc-link-lib=sqlite3");
-    println!("cargo::rustc-link-lib=static:+whole-archive=backend_coreml");
-}
-fn use_llm() {
-    println!("cargo::rustc-link-lib=static:+whole-archive=executorch_llm");
-}
-fn use_llm_kernels() {
-    println!("cargo::rustc-link-lib=static:+whole-archive=kernels_llm");
-}
-fn link_executorch(libdir: Option<String>) {
-    println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_EXECUTORCH_LIB_DIR");
+
+fn link_executorch() {
     println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_LINK");
 
     let link_enabled = std::env::var("EXECUTORCH_RS_LINK").as_deref() != Ok("0");
@@ -210,12 +132,21 @@ fn link_executorch(libdir: Option<String>) {
     if link_enabled {
         println!("cargo::rustc-cfg=link_cxx");
     }
+    //If download prebuilt is set then it already linked the prebuilt libraries with all their quirks and features
+    #[cfg(feature = "download_prebuilt")]
+    {
+        executorch_prebuilt::link_prebuilts(1, 1, 0);
+    }
+    if cfg!(feature = "download_prebuilt") {
+        return;
+    }
+    println!("cargo::rerun-if-env-changed=EXECUTORCH_RS_EXECUTORCH_LIB_DIR");
 
     if std::env::var("DOCS_RS").is_ok() || !link_enabled {
         // Skip linking to the static library when building documentation
         return;
     }
-    let libs_dir = libdir.or(std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR").ok());
+    let libs_dir = std::env::var("EXECUTORCH_RS_EXECUTORCH_LIB_DIR").ok();
     //let libs_dir = Some(libdir); //;
     if libs_dir.is_none() {
         println!("cargo::warning=EXECUTORCH_RS_EXECUTORCH_LIB_DIR is not set, can't locate executorch static libs");
@@ -225,43 +156,12 @@ fn link_executorch(libdir: Option<String>) {
         println!("cargo::rustc-link-search=native={libs_dir}");
     }
     println!("cargo::rustc-link-lib=static:+whole-archive=executorch");
-    if cfg!(feature = "xnnpack") {
-        use_xnnpack();
-    }
-    if cfg!(feature = "optimised_kernels") {
-        optimised_kernels();
-    }
-
-    if cfg!(feature = "torch_ao") {
-        use_torch_ao();
-    }
-
-    if cfg!(feature = "quantised_kernels") {
-        quantised_kernels();
-    }
-
-    if cfg!(feature = "llm") {
-        use_llm();
-    }
-
-    if cfg!(feature = "llm_kernels") {
-        use_llm_kernels();
-    }
-    if cfg!(feature = "coreml") {
-        use_coreml();
-    }
-
     //Link executorch core only if it exists
     if let Some(libs_dir) = &libs_dir {
         let path = PathBuf::from(libs_dir).join("libexecutorch_core.a");
         if let Ok(true) = std::fs::exists(path) {
             println!("cargo::rustc-link-lib=static:+whole-archive=executorch_core");
         }
-    } else {
-        println!("cargo::rustc-link-lib=static:+whole-archive=executorch_core");
-    }
-    if cfg!(feature = "download_prebuilt") {
-        return;
     }
 
     if cfg!(feature = "data-loader") {

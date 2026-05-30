@@ -520,6 +520,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "executorch-prebuilt"
+version = "0.1.0"
+dependencies = [
+ "download_prebuilt",
+]
+
+[[package]]
 name = "executorch-sys"
 version = "0.9.0"
 dependencies = [
@@ -527,7 +534,7 @@ dependencies = [
  "cc",
  "cxx",
  "cxx-build",
- "download_prebuilt",
+ "executorch-prebuilt",
  "link-cplusplus",
 ]
 
