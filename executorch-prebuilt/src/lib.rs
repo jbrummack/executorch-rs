@@ -20,7 +20,7 @@ impl AppleTarget {
             Self::SimulatorArm64
         } else if target.contains("ios") {
             Self::IosArm64
-        } else if target.contains("macos") {
+        } else if target.contains("macos") || target.contains("darwin") {
             Self::MacOsArm64
         } else {
             panic!("Unsupported prebuilt apple platform: {target}")
