@@ -206,8 +206,9 @@ impl Feature {
 
 pub fn link_prebuilts(a: u8, b: u8, c: u8) {
     let target = Target::new();
-    target.link_target(a, b, c);
+    target.download(a, b, c);
     for feature in Feature::get_features() {
         feature.link();
     }
+    target.link_target(a, b, c);
 }
