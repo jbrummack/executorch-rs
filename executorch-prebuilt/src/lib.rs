@@ -15,14 +15,15 @@ pub enum Target {
 }
 impl AppleTarget {
     pub fn new() -> Self {
-        if cfg!(target_env = "sim") {
+        let target = std::env::var("TARGET").unwrap_or_default();
+        if target.contains("sim") {
             Self::SimulatorArm64
-        } else if cfg!(target_os = "ios") {
+        } else if target.contains("ios") {
             Self::IosArm64
-        } else if cfg!(target_os = "macos") {
+        } else if target.contains("macos") {
             Self::MacOsArm64
         } else {
-            panic!("Unsupported prebuilt apple platform!")
+            panic!("Unsupported prebuilt apple platform: {target}")
         }
     }
     fn link_swift() {
@@ -49,23 +50,25 @@ impl AppleTarget {
 }
 impl AndroidTarget {
     pub fn new() -> Self {
-        if cfg!(target_arch = "aarch64") {
+        let target = std::env::var("TARGET").unwrap_or_default();
+        if target.contains("aarch64") {
             Self::AndroidArm64
-        } else if cfg!(target_arch = "x86_64") {
+        } else if target.contains("x86_64") {
             Self::AndroidX86
         } else {
-            panic!("Unsupported prebuilt android platform!")
+            panic!("Unsupported prebuilt android platform: {target}")
         }
     }
 }
 impl Target {
     pub fn new() -> Self {
-        if cfg!(target_os = "android") {
+        let target = std::env::var("TARGET").unwrap_or_default();
+        if target.contains("android") {
             Self::Android(AndroidTarget::new())
-        } else if cfg!(target_vendor = "apple") {
+        } else if target.contains("apple") {
             Self::Apple(AppleTarget::new())
         } else {
-            panic!("Unsupported prebuilt platform!")
+            panic!("Unsupported prebuilt platform: {target}")
         }
     }
     pub fn link_target(&self, a: u8, b: u8, c: u8) {
@@ -92,7 +95,7 @@ impl Target {
 
                 let arch = match android_target {
                     AndroidTarget::AndroidX86 => path.join("x86_64"),
-                    AndroidTarget::AndroidArm64 => path.join("x86_64"),
+                    AndroidTarget::AndroidArm64 => path.join("aarch64"),
                 };
                 arch
             }
