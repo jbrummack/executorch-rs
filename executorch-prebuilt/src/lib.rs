@@ -203,12 +203,109 @@ impl Feature {
         }
     }
 }
+pub fn static_lib_merge_step(target: Target, dl_path: &PathBuf, features: &HashSet<Feature>) {
+    match &target {
+        Target::Apple(apple_target) => {
+            AppleTarget::link_swift();
 
+            // Only merge on iOS — macOS links directly fine
+            let needs_merge = matches!(
+                apple_target,
+                AppleTarget::IosArm64 | AppleTarget::SimulatorArm64
+            );
+
+            if needs_merge {
+                let merged = merge_apple_libs(&dl_path, &features);
+                println!(
+                    "cargo::rustc-link-search=native={}",
+                    merged.parent().unwrap().display()
+                );
+                println!(
+                    "cargo::rustc-link-lib=static:+whole-archive={}",
+                    merged
+                        .file_stem()
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .trim_start_matches("lib")
+                );
+            } else {
+                // macOS: link as before
+                println!("cargo::rustc-link-search=native={}", dl_path.display());
+                println!("cargo::rustc-link-lib=static:+whole-archive=executorch");
+                for feature in features.clone() {
+                    feature.link();
+                }
+            }
+        }
+        Target::Android(_) => {
+            println!("cargo:rustc-link-search=native={}", dl_path.display());
+            println!("cargo:rustc-link-lib=dylib=executorch");
+        }
+    }
+}
+
+/// Merges all required .a files for an iOS slice into a single archive
+/// using `libtool -static`, so the Apple linker cannot dead-strip
+/// static initializers (e.g. CoreML backend registration) during the
+/// xcframework → Xcode link hop.
+fn merge_apple_libs(prebuilt_dir: &PathBuf, features: &HashSet<Feature>) -> PathBuf {
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    let merged_path = out_dir.join("libexecutorch_merged.a");
+
+    let mut libs: Vec<PathBuf> = vec![prebuilt_dir.join("libexecutorch.a")];
+
+    for feature in features {
+        let name = match feature {
+            Feature::CoreML => Some("libbackend_coreml.a"),
+            Feature::XNNPack => Some("libbackend_xnnpack.a"),
+            Feature::Threadpool => Some("libthreadpool.a"),
+            Feature::OptimisedKernels => Some("libkernels_optimized.a"),
+            Feature::QuantisedKernels => Some("libkernels_quantized.a"),
+            Feature::LlmKernels => Some("libkernels_llm.a"),
+            Feature::Llm => Some("libexecutorch_llm.a"),
+            Feature::TorchAO => Some("libkernels_torchao.a"),
+            // Accelerate is a framework, not a .a
+            Feature::Accelerate => None,
+        };
+        if let Some(name) = name {
+            libs.push(prebuilt_dir.join(name));
+        }
+    }
+
+    // Emit framework links separately — these can't go into libtool
+    if features.contains(&Feature::CoreML) {
+        println!("cargo:rustc-link-arg=-ObjC");
+        println!("cargo:rustc-link-lib=framework=CoreML");
+        println!("cargo:rustc-link-lib=sqlite3");
+    }
+    if features.contains(&Feature::Accelerate) {
+        println!("cargo:rustc-link-lib=framework=Accelerate");
+    }
+
+    let status = std::process::Command::new("libtool")
+        .arg("-static")
+        .arg("-o")
+        .arg(&merged_path)
+        .args(&libs)
+        .status()
+        .expect("failed to run libtool — is Xcode installed?");
+
+    assert!(status.success(), "libtool merge failed");
+
+    // Tell cargo to rerun if any input lib changes
+    for lib in &libs {
+        println!("cargo:rerun-if-changed={}", lib.display());
+    }
+
+    merged_path
+}
 pub fn link_prebuilts(a: u8, b: u8, c: u8) {
     let target = Target::new();
-    target.download(a, b, c);
-    for feature in Feature::get_features() {
+    let dl_path = target.download(a, b, c);
+    /*for feature in Feature::get_features() {
         feature.link();
-    }
-    target.link_target(a, b, c);
+    }*/
+    //target.link_target(a, b, c);
+    static_lib_merge_step(target, &dl_path, &Feature::get_features());
 }
