@@ -164,7 +164,7 @@ impl Feature {
         }
         features
     }
-    fn link(&self) {
+    fn link(&self, prebuilt_dir: &PathBuf) {
         match self {
             Feature::Threadpool => {
                 println!("cargo::rustc-link-lib=static:+whole-archive=threadpool");
@@ -174,12 +174,16 @@ impl Feature {
             }
             //Needs accelerate
             Feature::CoreML => {
+                let coreml = prebuilt_dir.join("libbackend_coreml.a");
+                // -force_load is the Apple equivalent of --whole-archive for a single lib.
+                // It forces every object file in the archive to be included, preventing
+                // the linker from dropping backend_delegate.o which has no direct callers.
+                println!("cargo:rustc-link-arg=-force_load");
+                println!("cargo:rustc-link-lib=static:+whole-archive=backend_coreml");
+                println!("cargo:rustc-link-arg={}", coreml.display());
                 println!("cargo:rustc-link-arg=-ObjC");
-                // CoreML framework
                 println!("cargo:rustc-link-lib=framework=CoreML");
-                // SQLite symbols may be needed for CoreML
                 println!("cargo:rustc-link-lib=sqlite3");
-                println!("cargo::rustc-link-lib=static:+whole-archive=backend_coreml");
             }
             //Needs accelerate
             Feature::OptimisedKernels => {
@@ -234,7 +238,7 @@ pub fn static_lib_merge_step(target: Target, dl_path: &PathBuf, features: &HashS
                 println!("cargo::rustc-link-search=native={}", dl_path.display());
                 println!("cargo::rustc-link-lib=static:+whole-archive=executorch");
                 for feature in features.clone() {
-                    feature.link();
+                    feature.link(dl_path);
                 }
             }
         }
