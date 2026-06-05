@@ -28,7 +28,11 @@ pub struct BinaryPayload {
 }*/
 const ARCHITECTURES: LazyLock<HashSet<&str>> =
     LazyLock::new(|| ["ios-arm64-simulator", "macos-arm64", "ios-arm64"].into());
-fn inspect_zip_contents(zip_path: impl AsRef<Path>, output_path: &str) -> anyhow::Result<()> {
+fn inspect_zip_contents(
+    zip_path: impl AsRef<Path>,
+    output_path: &str,
+    debug_build: bool,
+) -> anyhow::Result<()> {
     use std::fs::File;
 
     // Open the file synchronously
@@ -111,9 +115,10 @@ fn inspect_zip_contents(zip_path: impl AsRef<Path>, output_path: &str) -> anyhow
                     if should_extract {
                         extract_path.push(compstr.to_string());
                     }
-                    if compstr.contains(".a") && !compstr.contains("debug") {
+                    if compstr.contains(".a") && (compstr.contains("debug") == debug_build) {
                         if let Some(arch) = &architecture {
                             let file_name = compstr
+                                .replace("_debug", "")
                                 .replace("_simulator", "")
                                 .replace("_ios", "")
                                 .replace("_macos", "");
@@ -149,15 +154,33 @@ fn inspect_zip_contents(zip_path: impl AsRef<Path>, output_path: &str) -> anyhow
 
     Ok(())
 }
-pub fn blocking_download_version(a: u8, b: u8, c: u8) -> anyhow::Result<String> {
-    let out = tokio::runtime::Runtime::new()?.block_on(download_version(a, b, c))?;
+pub fn blocking_download_version(a: u8, b: u8, c: u8, debug_build: bool) -> anyhow::Result<String> {
+    let out = tokio::runtime::Runtime::new()?.block_on(download_version(a, b, c, debug_build))?;
     Ok(out)
 }
-pub fn blocking_download_version_into(a: u8, b: u8, c: u8, path: &str) -> anyhow::Result<String> {
-    let out = tokio::runtime::Runtime::new()?.block_on(download_version_into(a, b, c, path))?;
+pub fn blocking_download_version_into(
+    a: u8,
+    b: u8,
+    c: u8,
+    path: &str,
+    debug_build: bool,
+) -> anyhow::Result<String> {
+    let out = tokio::runtime::Runtime::new()?.block_on(download_version_into(
+        a,
+        b,
+        c,
+        path,
+        debug_build,
+    ))?;
     Ok(out)
 }
-pub async fn download_version_into(a: u8, b: u8, c: u8, pb: &str) -> anyhow::Result<String> {
+pub async fn download_version_into(
+    a: u8,
+    b: u8,
+    c: u8,
+    pb: &str,
+    debug_build: bool,
+) -> anyhow::Result<String> {
     let out_dir = format!("{pb}/executorch_binaries/xt_{a}_{b}_{c}");
     if std::fs::exists(&out_dir)? {
         return Ok(out_dir);
@@ -171,15 +194,15 @@ pub async fn download_version_into(a: u8, b: u8, c: u8, pb: &str) -> anyhow::Res
     for zip in std::fs::read_dir(&out_dir)? {
         let zip = zip?;
         if zip.file_type()?.is_file() {
-            inspect_zip_contents(zip.path(), &out_dir)?;
+            inspect_zip_contents(zip.path(), &out_dir, debug_build)?;
             std::fs::remove_file(zip.path())?;
         }
     }
     Ok(out_dir)
 }
-pub async fn download_version(a: u8, b: u8, c: u8) -> anyhow::Result<String> {
+pub async fn download_version(a: u8, b: u8, c: u8, debug_build: bool) -> anyhow::Result<String> {
     let out_dir_env = env::var("OUT_DIR").context("OUT_DIR")?;
-    download_version_into(a, b, c, &out_dir_env).await
+    download_version_into(a, b, c, &out_dir_env, debug_build).await
 }
 async fn download_binary_payloads(
     downloads: Vec<BinaryPayload>,

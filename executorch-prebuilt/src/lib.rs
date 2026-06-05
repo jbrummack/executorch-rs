@@ -100,7 +100,7 @@ impl Target {
                 arch
             }
             Target::Apple(apple_target) => {
-                let path = download_prebuilt::blocking_download_version(a, b, c).unwrap();
+                let path = download_prebuilt::blocking_download_version(a, b, c, true).unwrap();
                 let path = PathBuf::from(path);
                 let arch = match apple_target {
                     AppleTarget::IosArm64 => "ios-arm64",
