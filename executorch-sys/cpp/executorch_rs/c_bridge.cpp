@@ -7,8 +7,11 @@
 
 //#include "executorch/backends/apple/coreml/runtime/delegate/backend_delegate.h"
 //#include "executorch/backends/apple/coreml/runtime/delegate/model_logging_options.h"
-//#include "executorch/backends/apple/coreml/runtime/include/coreml_backend/coreml_backend_options.h"
-//#include "executorch/backends/apple/coreml/runtime/include/coreml_backend/delegate.h"
+//#include "executorch/backends/apple/coreml/runtime/delegate/executorch_operations.h"
+#include "executorch/backends/apple/coreml/runtime/include/coreml_backend/coreml_backend_options.h"
+#include "executorch/backends/apple/coreml/runtime/include/coreml_backend/delegate.h"
+
+
 #include "executorch/runtime/backend/interface.h"
 #include "executorch/runtime/backend/backend_init_context.h"
 #include "executorch/runtime/backend/backend_option_context.h"

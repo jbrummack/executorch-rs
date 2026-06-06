@@ -33,14 +33,20 @@ fn main() {
 }
 
 fn build_c_bridge() {
+    let third_parties_dir = third_party_dir();
     let sources_dir = cpp_dir().join("executorch_rs");
     let mut builder = cc::Build::new();
     common_cc(&mut builder);
     builder
         .files([sources_dir.join("c_bridge.cpp")])
         .files([sources_dir.join("backend_debug.cpp")])
+        .files([sources_dir.join("register_coreml.mm")])
+        .include(third_parties_dir.join("executorch/backends/apple/coreml/runtime/delegate"))
+        .include(third_parties_dir.join("executorch/backends/apple/coreml/runtime/include"))
         //.files([sources_dir.join("init_backend.cpp")])
         .includes(cpp_includes());
+
+    builder.flag("-fobjc-arc");
     builder.compile(&format!(
         "executorch_rs_c_bridge_{}",
         env!("CARGO_PKG_VERSION")

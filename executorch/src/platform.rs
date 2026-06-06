@@ -16,10 +16,12 @@ pub mod backend {
         fn et_backend_count() -> usize;
         fn et_backend_name(i: usize) -> *const c_char;
         fn ensure_backends_registered();
+        fn register_coreml_backend();
     }
     ///Ensure that backends are registered
     pub fn ensure_backends() {
         unsafe {
+            register_coreml_backend();
             ensure_backends_registered();
         }
     }
