@@ -15,6 +15,11 @@ pub mod backend {
     extern "C" {
         fn et_backend_count() -> usize;
         fn et_backend_name(i: usize) -> *const c_char;
+        fn ensure_backends_registered();
+    }
+    ///Ensure that backends are registered
+    pub fn ensure_backends() {
+        ensure_backends_registered();
     }
     ///Gets how many backends are registered
     pub fn backend_count() -> usize {
