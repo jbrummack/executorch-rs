@@ -1,6 +1,8 @@
 use core::ffi::CStr;
 use std::ptr::NonNull;
 
+use executorch::platform::backend::backend_count;
+
 static mut INIT_CALLS_COUNT: u32 = 0;
 static mut ABORT_CALLS_COUNT: u32 = 0;
 static mut CURRENT_TICKS_CALLS_COUNT: u32 = 0;
@@ -8,7 +10,11 @@ static mut TICKS_TO_NS_MULTIPLIER_CALLS_COUNT: u32 = 0;
 static mut EMIT_LOG_MESSAGE_CALLS_COUNT: u32 = 0;
 static mut ALLOCATE_CALLS_COUNT: u32 = 0;
 static mut FREE_CALLS_COUNT: u32 = 0;
-
+#[test]
+fn backend_info() {
+    let ct = backend_count();
+    assert_ne!(ct, 0, "Couldnt find any backends")
+}
 #[test]
 fn custom_pal() {
     let source_filename =

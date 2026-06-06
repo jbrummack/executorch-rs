@@ -38,6 +38,7 @@ fn build_c_bridge() {
     common_cc(&mut builder);
     builder
         .files([sources_dir.join("c_bridge.cpp")])
+        .files([sources_dir.join("backend_debug.cpp")])
         .includes(cpp_includes());
     builder.compile(&format!(
         "executorch_rs_c_bridge_{}",

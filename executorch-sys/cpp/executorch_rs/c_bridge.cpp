@@ -5,6 +5,15 @@
 #include "executorch_rs/c_bridge.h"
 #include "executorch_rs/layout.hpp"
 
+//#include "executorch/backends/apple/coreml/runtime/delegate/backend_delegate.h"
+//#include "executorch/backends/apple/coreml/runtime/delegate/model_logging_options.h"
+//#include "executorch/backends/apple/coreml/runtime/include/coreml_backend/coreml_backend_options.h"
+//#include "executorch/backends/apple/coreml/runtime/include/coreml_backend/delegate.h"
+#include "executorch/runtime/backend/interface.h"
+#include "executorch/runtime/backend/backend_init_context.h"
+#include "executorch/runtime/backend/backend_option_context.h"
+#include "executorch/runtime/backend/options.h"
+
 #include "executorch/runtime/platform/platform.h"
 #include "executorch/runtime/core/error.h"
 #include "executorch/runtime/core/span.h"

@@ -7,7 +7,42 @@ use core::ffi::CStr;
 use core::ops::Not;
 use core::ptr::NonNull;
 use executorch_sys as sys;
+///Info about Executorch backends
+pub mod backend {
+    use core::ffi::CStr;
+    use std::os::raw::c_char;
 
+    extern "C" {
+        fn et_backend_count() -> usize;
+        fn et_backend_name(i: usize) -> *const c_char;
+    }
+    ///Gets how many backends are registered
+    pub fn backend_count() -> usize {
+        unsafe { et_backend_count() }
+    }
+    ///Gets the name of a registered backend
+    pub fn backend_name(i: usize) -> Option<String> {
+        unsafe {
+            let ptr = et_backend_name(i);
+
+            if ptr.is_null() {
+                return None;
+            }
+            Some(CStr::from_ptr(ptr).to_string_lossy().into_owned())
+        }
+    }
+    ///Outputs a list of all registered backends
+    pub fn list_backends() -> Vec<String> {
+        let ct = backend_count();
+        let mut backends = Vec::new();
+        for b in 0..ct {
+            if let Some(n) = backend_name(b) {
+                backends.push(n);
+            }
+        }
+        backends
+    }
+}
 /// Initialize the platform abstraction layer.
 ///
 /// This function should be called before any other function provided by the PAL
