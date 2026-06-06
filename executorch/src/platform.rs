@@ -19,7 +19,9 @@ pub mod backend {
     }
     ///Ensure that backends are registered
     pub fn ensure_backends() {
-        ensure_backends_registered();
+        unsafe {
+            ensure_backends_registered();
+        }
     }
     ///Gets how many backends are registered
     pub fn backend_count() -> usize {
