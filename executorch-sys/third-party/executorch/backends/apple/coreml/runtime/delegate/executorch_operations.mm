@@ -12,6 +12,32 @@
 #include <array>
 #import <memory>
 
+
+// Patch for ExecuTorch prebuilts targeting iOS 17 — prewarmUsingState:error:
+// is iOS 18+ only but called without availability guard in the prebuilt delegate.
+// Prewarming is a performance hint only, no-oping is safe.
+@interface NSObject (CoreMLPrewarmPatch)
+@end
+@implementation NSObject (CoreMLPrewarmPatch)
++ (void)load {
+    Class cls = NSClassFromString(@"MLDelegateModel");
+    if (!cls) {
+        NSLog(@"[CoreMLPatch] MLDelegateModel not found — iOS 26 may have renamed it");
+        return;
+    }
+    SEL sel = @selector(prewarmUsingState:error:);
+    if (![cls instancesRespondToSelector:sel]) {
+        NSLog(@"[CoreMLPatch] patching prewarmUsingState:error: onto MLDelegateModel");
+        IMP imp = imp_implementationWithBlock(^BOOL(id self, id state, NSError **err) {
+            return YES;
+        });
+        class_addMethod(cls, sel, imp, "B@:@@");
+    } else {
+        NSLog(@"[CoreMLPatch] prewarmUsingState:error: already exists, no patch needed");
+    }
+}
+@end
+
 namespace executorch::core_ml_backend_delegate {
   using executorch::runtime::get_backend_class;
 
